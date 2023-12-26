@@ -3,7 +3,7 @@ name: Build and publish Docker images
 on:
   push:
     branches:
-      - "master"
+      - 'master'
 
 env:
   REGISTRY_IMAGE: ghcr.io/weberphilipp/speedflux
@@ -25,6 +25,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch,prefix=latest,value=master
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -82,8 +85,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          SHA_TAG=$(git rev-parse --short HEAD)
+          docker buildx imagetools create --tag ${{ env.REGISTRY_IMAGE }}:$SHA_TAG --tag ${{ env.REGISTRY_IMAGE }}:latest \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:$SHA_TAG
