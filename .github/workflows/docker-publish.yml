@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Extract Short SHA
         id: sha
-        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -35,6 +35,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare Tags
+        id: prep
+        run: echo "platform_tag=$(echo ${{ matrix.platform }} | sed 's/\//-/g')" >> $GITHUB_OUTPUT
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -42,7 +45,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ env.REGISTRY_IMAGE }}:${{ matrix.platform }}
+            ${{ env.REGISTRY_IMAGE }}:${{ steps.sha.outputs.short_sha }}-${{ steps.prep.outputs.platform_tag }}
 
   merge:
     runs-on: ubuntu-latest
@@ -60,8 +63,8 @@ jobs:
           docker buildx imagetools create \
             --tag ${{ env.REGISTRY_IMAGE }}:$SHORT_SHA \
             --tag ${{ env.REGISTRY_IMAGE }}:latest \
-            ${{ env.REGISTRY_IMAGE }}:linux/amd64 \
-            ${{ env.REGISTRY_IMAGE }}:linux/arm64
+            ${{ env.REGISTRY_IMAGE }}:$SHORT_SHA-linux-amd64 \
+            ${{ env.REGISTRY_IMAGE }}:$SHORT_SHA-linux-arm64
       - name: Inspect manifest
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:$SHORT_SHA
