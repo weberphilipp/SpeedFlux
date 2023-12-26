@@ -30,6 +30,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ steps.sha.outputs.short_sha }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -80,6 +83,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ needs.build.outputs.short_sha }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -89,9 +95,6 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          SHORT_SHA=${{ needs.build.outputs.short_sha }}
-          echo $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          echo $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
       - name: Inspect image
